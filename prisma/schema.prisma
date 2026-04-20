@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -33,7 +34,7 @@ model Spell {
   duration    String
   description String
   source      String @default("SRD")
-  preparedBy  Character[] @relation("PreparedCharacterSpells")
+  preparedBy  PreparedSpell[]
 
   @@unique([name, source])
   @@index([name])
@@ -77,8 +78,14 @@ model Character {
   currentHp     Int
   temporaryHp   Int
   armorClass    Int
-  spellSlots    Json
-  preparedSpells Spell[] @relation("PreparedCharacterSpells")
+  deathSaveSuccesses Int @default(0)
+  deathSaveFailures  Int @default(0)
+  hitDiceTotal       Int
+  hitDiceSpent       Int @default(0)
+  lastLongRestAt     DateTime?
+
+  spellSlots    SpellSlot[]
+  preparedSpells PreparedSpell[]
   conditions    Json
   inventory     Json
   notes         String
@@ -86,6 +93,31 @@ model Character {
 
   @@index([userId])
   @@index([name])
+}
+
+model PreparedSpell {
+  characterId String
+  spellId     String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  spell       Spell     @relation(fields: [spellId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([characterId, spellId])
+  @@index([spellId])
+}
+
+model SpellSlot {
+  characterId String
+  level       Int
+  max         Int
+  used        Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@id([characterId, level])
+  @@index([characterId])
+  @@index([level])
 }
 
 model Rule {

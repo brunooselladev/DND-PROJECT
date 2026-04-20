@@ -4,8 +4,8 @@ import { useActionState } from "react";
 
 import {
   createCharacterAction,
-  INITIAL_CHARACTER_ACTION_STATE,
 } from "@/app/characters/actions";
+import { INITIAL_CHARACTER_ACTION_STATE } from "@/app/characters/action-state";
 
 export function CreateCharacterForm() {
   const [state, formAction, isPending] = useActionState(

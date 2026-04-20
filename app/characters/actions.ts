@@ -8,19 +8,22 @@ import {
   CharacterNotFoundError,
   SPELL_SLOT_LEVELS,
   createCharacterForUser,
+  applyDamageForUser,
+  healForUser,
+  longRestForUser,
+  recordDeathSaveForUser,
+  restoreSpellSlotForUser,
+  setSpellSlotMaxForUser,
+  shortRestForUser,
+  togglePreparedSpellForUser,
+  consumeSpellSlotForUser,
   createDefaultSpellSlots,
+  type SpellSlotLevelKey,
   updateCharacterForUser,
 } from "@/lib/characters";
 import { getCurrentUser } from "@/lib/auth";
 
-export type CharacterActionState = {
-  status: "idle" | "error" | "success";
-  message?: string;
-};
-
-export const INITIAL_CHARACTER_ACTION_STATE: CharacterActionState = {
-  status: "idle",
-};
+import type { CharacterActionState } from "@/app/characters/action-state";
 
 function parseText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -39,15 +42,18 @@ function parseLines(value: string) {
 }
 
 function parseSpellSlots(formData: FormData) {
-  const spellSlots = createDefaultSpellSlots();
+  const slots = createDefaultSpellSlots();
 
   for (const level of SPELL_SLOT_LEVELS) {
-    const key = `level${level}`;
-    const value = Number(formData.get(key) ?? 0);
-    spellSlots[key] = Number.isNaN(value) ? 0 : Math.max(0, value);
+    const key = `level${level}` as SpellSlotLevelKey;
+    const max = Number(formData.get(`${key}Max`) ?? 0);
+    const used = Number(formData.get(`${key}Used`) ?? 0);
+    const nextMax = Number.isNaN(max) ? 0 : Math.max(0, Math.min(99, max));
+    const nextUsed = Number.isNaN(used) ? 0 : Math.max(0, Math.min(nextMax, used));
+    slots[key] = { max: nextMax, used: nextUsed };
   }
 
-  return spellSlots;
+  return slots;
 }
 
 export async function createCharacterAction(
@@ -150,4 +156,95 @@ export async function updateCharacterAction(
 
     throw error;
   }
+}
+
+type GameplayActionResult =
+  | { ok: true; snapshot: Awaited<ReturnType<typeof longRestForUser>> }
+  | {
+      ok: false;
+      message: string;
+    };
+
+async function requireUserAndCharacterId(characterId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect(`/login?callbackUrl=/characters/${characterId}`);
+  }
+  return currentUser;
+}
+
+export async function applyDamageAction(characterId: string, damage: number) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const snapshot = await applyDamageForUser(currentUser.id, characterId, damage);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return snapshot;
+}
+
+export async function healAction(characterId: string, amount: number) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const snapshot = await healForUser(currentUser.id, characterId, amount);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return snapshot;
+}
+
+export async function longRestAction(characterId: string): Promise<GameplayActionResult> {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  try {
+    const snapshot = await longRestForUser(currentUser.id, characterId);
+    revalidatePath("/characters");
+    revalidatePath(`/characters/${characterId}`);
+    return { ok: true, snapshot };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Long rest failed." };
+  }
+}
+
+export async function shortRestAction(characterId: string, hitDiceToSpend: number) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const snapshot = await shortRestForUser(currentUser.id, characterId, hitDiceToSpend);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return snapshot;
+}
+
+export async function recordDeathSaveAction(characterId: string, result: "success" | "failure") {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const snapshot = await recordDeathSaveForUser(currentUser.id, characterId, result);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return snapshot;
+}
+
+export async function consumeSpellSlotAction(characterId: string, level: number) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const slot = await consumeSpellSlotForUser(currentUser.id, characterId, level);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return slot;
+}
+
+export async function restoreSpellSlotAction(characterId: string, level: number) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const slot = await restoreSpellSlotForUser(currentUser.id, characterId, level);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return slot;
+}
+
+export async function setSpellSlotMaxAction(characterId: string, level: number, max: number) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const slot = await setSpellSlotMaxForUser(currentUser.id, characterId, level, max);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return slot;
+}
+
+export async function togglePreparedSpellAction(characterId: string, spellId: string, prepared: boolean) {
+  const currentUser = await requireUserAndCharacterId(characterId);
+  const preparedIds = await togglePreparedSpellForUser(currentUser.id, characterId, spellId, prepared);
+  revalidatePath("/characters");
+  revalidatePath(`/characters/${characterId}`);
+  return preparedIds;
 }

@@ -7,7 +7,7 @@ import {
   canEditCharacter,
   findCharacterForViewer,
   listCharacterSpellOptions,
-  normalizeSpellSlots,
+  spellSlotRowsToState,
   normalizeStringArray,
 } from "@/lib/characters";
 
@@ -78,8 +78,12 @@ export default async function CharacterDetailPage({ params }: PageProps) {
           currentHp: character.currentHp,
           temporaryHp: character.temporaryHp,
           armorClass: character.armorClass,
-          spellSlots: normalizeSpellSlots(character.spellSlots),
-          preparedSpellIds: character.preparedSpells.map((spell) => spell.id),
+          deathSaveSuccesses: character.deathSaveSuccesses,
+          deathSaveFailures: character.deathSaveFailures,
+          hitDiceTotal: character.hitDiceTotal,
+          hitDiceSpent: character.hitDiceSpent,
+          spellSlots: spellSlotRowsToState(character.spellSlots),
+          preparedSpellIds: character.preparedSpells.map((entry) => entry.spell.id),
           conditionsText: normalizeStringArray(character.conditions).join("\n"),
           inventoryText: normalizeStringArray(character.inventory).join("\n"),
           notes: character.notes,
