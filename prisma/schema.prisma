@@ -7,11 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  PLAYER
+  DM
+  ADMIN
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  role      Role     @default(PLAYER)
   createdAt DateTime @default(now())
+  characters Character[]
 }
 
 model Spell {
@@ -25,7 +33,9 @@ model Spell {
   duration    String
   description String
   source      String @default("SRD")
+  preparedBy  Character[] @relation("PreparedCharacterSpells")
 
+  @@unique([name, source])
   @@index([name])
   @@index([level])
   @@index([school])
@@ -42,9 +52,40 @@ model Monster {
   actions         Json
   source          String @default("SRD")
 
+  @@unique([name, source])
   @@index([name])
   @@index([challengeRating])
   @@index([type])
+}
+
+model Character {
+  id            String @id @default(cuid())
+  name          String
+  userId        String
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class         String
+  level         Int
+  race          String
+  background    String
+  strength      Int
+  dexterity     Int
+  constitution  Int
+  intelligence  Int
+  wisdom        Int
+  charisma      Int
+  maxHp         Int
+  currentHp     Int
+  temporaryHp   Int
+  armorClass    Int
+  spellSlots    Json
+  preparedSpells Spell[] @relation("PreparedCharacterSpells")
+  conditions    Json
+  inventory     Json
+  notes         String
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([name])
 }
 
 model Rule {
@@ -54,6 +95,7 @@ model Rule {
   content   String
   source    String @default("SRD")
 
+  @@unique([title, source])
   @@index([title])
   @@index([category])
 }

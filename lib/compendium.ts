@@ -48,6 +48,16 @@ function getTake(value?: number): number {
   return Math.min(Math.max(1, value), MAX_TAKE);
 }
 
+function parseChallengeRating(value: string): number {
+  if (value.includes("/")) {
+    const [numerator, denominator] = value.split("/").map(Number);
+    return denominator ? numerator / denominator : 0;
+  }
+
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 export async function listSpells(options: {
   query?: string;
   level?: number;
@@ -125,11 +135,16 @@ export async function listMonsters(options: {
       source: true,
     },
     where: filters.length > 0 ? { AND: filters } : undefined,
-    orderBy: [{ challengeRating: "asc" }, { name: "asc" }],
-    take: getTake(options.take),
+    orderBy: [{ name: "asc" }],
   });
 
-  return rows;
+  return rows
+    .sort(
+      (left, right) =>
+        parseChallengeRating(left.challengeRating) - parseChallengeRating(right.challengeRating) ||
+        left.name.localeCompare(right.name),
+    )
+    .slice(0, getTake(options.take));
 }
 
 export async function listRules(options: {

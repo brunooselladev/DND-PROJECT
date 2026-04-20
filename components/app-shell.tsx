@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { NavLink } from "@/components/nav-link";
-import { auth } from "@/lib/auth";
+import { SignOutButton } from "@/components/sign-out-button";
+import { getCurrentUser, isAdminRole } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/spells", label: "Spells" },
@@ -14,7 +15,12 @@ type AppShellProps = {
 };
 
 export async function AppShell({ children }: AppShellProps) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(currentUser ? [{ href: "/characters", label: "Characters" }] : []),
+    ...(isAdminRole(currentUser?.role) ? [{ href: "/admin", label: "Admin" }] : []),
+  ];
 
   return (
     <div className="min-h-screen bg-app-texture">
@@ -28,24 +34,22 @@ export async function AppShell({ children }: AppShellProps) {
           </Link>
 
           <nav className="mt-6 grid gap-1">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <NavLink key={item.href} href={item.href} label={item.label} />
             ))}
           </nav>
 
           <div className="mt-8 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-soft)] p-3 text-sm">
-            {session?.user ? (
+            {currentUser ? (
               <>
                 <p className="font-medium text-[color:var(--foreground)]">
-                  {session.user.name ?? session.user.email}
+                  {currentUser.name ?? currentUser.email}
                 </p>
-                <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">{session.user.email}</p>
-                <Link
-                  href="/api/auth/signout?callbackUrl=/spells"
-                  className="mt-3 inline-block text-xs text-[color:var(--accent-strong)] hover:underline"
-                >
-                  Sign out
-                </Link>
+                <p className="mt-1 text-xs text-[color:var(--muted-foreground)]">{currentUser.email}</p>
+                <p className="mt-1 text-xs uppercase tracking-wide text-[color:var(--muted-foreground)]">
+                  Role: {currentUser.role}
+                </p>
+                <SignOutButton className="mt-3 inline-block text-xs text-[color:var(--accent-strong)] hover:underline" />
               </>
             ) : (
               <>
