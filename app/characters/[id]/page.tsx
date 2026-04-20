@@ -38,7 +38,7 @@ export default async function CharacterDetailPage({ params }: PageProps) {
   return (
     <section className="space-y-5">
       <Link href="/characters" className="text-sm text-[color:var(--accent-strong)] hover:underline">
-        {"<- "}Back to characters
+        ← Back to characters
       </Link>
 
       <header className="flex flex-wrap items-start justify-between gap-4">

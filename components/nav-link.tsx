@@ -2,28 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-import { cn } from "@/lib/utils";
+import clsx from "clsx";
 
 type NavLinkProps = {
   href: string;
   label: string;
+  icon?: string;
 };
 
-export function NavLink({ href, label }: NavLinkProps) {
+export function NavLink({ href, label, icon }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <Link
       href={href}
-      className={cn(
-        "rounded-md px-3 py-2 text-sm transition",
-        isActive
-          ? "bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]"
-          : "text-[color:var(--muted-foreground)] hover:bg-[color:var(--surface-strong)] hover:text-[color:var(--foreground)]"
-      )}
+      className={clsx("nav-link", isActive && "nav-link-active")}
     >
+      {icon ? <span className="text-base">{icon}</span> : null}
       {label}
     </Link>
   );

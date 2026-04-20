@@ -9,7 +9,8 @@ import { prisma } from "@/lib/prisma";
 const ROLE_VALUES = new Set<Role>([Role.PLAYER, Role.DM, Role.ADMIN]);
 
 export const githubConfigured = Boolean(process.env.GITHUB_ID && process.env.GITHUB_SECRET);
-export const allowDevCredentials = process.env.NODE_ENV !== "production";
+export const allowDevCredentials =
+  process.env.NODE_ENV === "development" || process.env.ALLOW_DEV_CREDENTIALS === "1";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -116,16 +117,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      const emailSource = user?.email ?? token.email;
-
-      if (!emailSource) {
+      if (!user?.email) {
         return token;
       }
 
       const dbUser = await syncUserByEmail({
-        email: emailSource,
-        name: user?.name ?? token.name,
-        role: user?.role,
+        email: user.email,
+        name: user.name,
+        role: user.role,
         allowRoleUpdate: false,
       });
 

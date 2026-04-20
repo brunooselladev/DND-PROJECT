@@ -371,6 +371,14 @@ export async function updateCharacterForUser(userId: string, characterId: string
   const nextCurrentHp = clamp(input.currentHp, 0, 999);
 
   return prisma.$transaction(async (tx) => {
+    const previous = await tx.character.findUnique({
+      where: { id: characterId },
+      select: { hitDiceSpent: true },
+    });
+
+    const previousSpent = previous?.hitDiceSpent ?? 0;
+    const nextHitDiceSpent = clamp(previousSpent, 0, nextLevel);
+
     const updated = await tx.character.update({
       where: { id: characterId },
       data: {
@@ -390,6 +398,7 @@ export async function updateCharacterForUser(userId: string, characterId: string
         temporaryHp: clamp(input.temporaryHp, 0, 999),
         armorClass: clamp(input.armorClass, 0, 99),
         hitDiceTotal: nextLevel,
+        hitDiceSpent: nextHitDiceSpent,
         conditions: input.conditions,
         inventory: input.inventory,
         notes: input.notes.trim(),
@@ -413,7 +422,11 @@ export async function updateCharacterForUser(userId: string, characterId: string
       const key = `level${level}` as SpellSlotLevelKey;
       const band = input.spellSlots[key] ?? { max: 0, used: 0 };
       const max = clamp(band.max, 0, 99);
-      const used = clamp(band.used, 0, max);
+      const existing = await tx.spellSlot.findUnique({
+        where: { characterId_level: { characterId, level } },
+        select: { used: true },
+      });
+      const used = clamp(existing?.used ?? clamp(band.used, 0, max), 0, max);
       await tx.spellSlot.upsert({
         where: {
           characterId_level: {

@@ -61,7 +61,7 @@ export function LoginForm({ allowDevCredentials, githubConfigured }: LoginFormPr
 
   if (!allowDevCredentials && !githubConfigured) {
     return (
-      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5 text-sm text-[color:var(--muted-foreground)]">
+      <div className="card-static p-5 text-sm text-[color:var(--muted-foreground)]">
         Authentication is currently unavailable because no providers are configured.
       </div>
     );
@@ -72,41 +72,41 @@ export function LoginForm({ allowDevCredentials, githubConfigured }: LoginFormPr
       {allowDevCredentials ? (
         <form
           onSubmit={handleDevSignIn}
-          className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5"
+          className="card-static p-5"
         >
           <h2 className="text-lg font-semibold text-[color:var(--foreground)]">Development Login</h2>
           <p className="mt-1 text-sm text-[color:var(--muted-foreground)]">
             Use any email and choose a role for local testing.
           </p>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="grid gap-2 text-sm">
-              <span>Email</span>
+              <span className="text-[color:var(--foreground)] font-medium">Email</span>
               <input
                 required
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-3 py-2"
+                className="input"
               />
             </label>
 
             <label className="grid gap-2 text-sm">
-              <span>Display Name</span>
+              <span className="text-[color:var(--foreground)] font-medium">Display Name</span>
               <input
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-3 py-2"
+                className="input"
               />
             </label>
 
             <label className="grid gap-2 text-sm md:col-span-2">
-              <span>Role</span>
+              <span className="text-[color:var(--foreground)] font-medium">Role</span>
               <select
                 value={role}
                 onChange={(event) => setRole(event.target.value as (typeof ROLE_OPTIONS)[number]["value"])}
-                className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-3 py-2"
+                className="input"
               >
                 {ROLE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -117,35 +117,39 @@ export function LoginForm({ allowDevCredentials, githubConfigured }: LoginFormPr
             </label>
           </div>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="mt-4 rounded-md bg-[color:var(--accent-strong)] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isPending ? "Signing in..." : "Sign in with development credentials"}
-          </button>
+          <div className="mt-5">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="btn-primary"
+            >
+              {isPending ? "Signing in..." : "Sign in with development credentials"}
+            </button>
+          </div>
         </form>
       ) : null}
 
       {githubConfigured ? (
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
+        <div className="card-static p-5">
           <h2 className="text-lg font-semibold text-[color:var(--foreground)]">GitHub</h2>
           <p className="mt-1 text-sm text-[color:var(--muted-foreground)]">
             Continue with GitHub if OAuth is configured for this environment.
           </p>
 
-          <button
-            type="button"
-            onClick={handleGithubSignIn}
-            className="mt-4 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-soft)] px-4 py-2 text-sm font-medium text-[color:var(--foreground)] hover:bg-[color:var(--surface-strong)]"
-          >
-            Continue with GitHub
-          </button>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleGithubSignIn}
+              className="btn-ghost"
+            >
+              Continue with GitHub
+            </button>
+          </div>
         </div>
       ) : null}
 
       {errorMessage ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+        <p className="rounded-md border border-red-800 bg-red-900/30 px-3 py-2 text-sm text-red-300">{errorMessage}</p>
       ) : null}
     </div>
   );

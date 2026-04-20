@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector, pg_graphql, pg_stat_statements, pgcrypto, uuid_ossp(map: "uuid-ossp"), supabase_vault]
 }
 
 enum Role {
@@ -14,13 +16,21 @@ enum Role {
   ADMIN
 }
 
+enum DocumentStatus {
+  PENDING
+  INDEXING
+  INDEXED
+  FAILED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      Role     @default(PLAYER)
-  createdAt DateTime @default(now())
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  role       Role        @default(PLAYER)
+  createdAt  DateTime    @default(now())
   characters Character[]
+  documents  Document[]
 }
 
 model Spell {
@@ -43,20 +53,87 @@ model Spell {
 }
 
 model Monster {
-  id              String @id @default(cuid())
+  id              String          @id @default(cuid())
   name            String
+  size            String          @default("")
   challengeRating String
   type            String
+  alignment       String          @default("")
   armorClass      Int
   hitPoints       Int
+  speed           Json?
+  strength        Int             @default(10)
+  dexterity       Int             @default(10)
+  constitution    Int             @default(10)
+  intelligence    Int             @default(10)
+  wisdom          Int             @default(10)
+  charisma        Int             @default(10)
+  senses          Json?
+  languages       String          @default("")
   stats           Json
   actions         Json
-  source          String @default("SRD")
+  source          String          @default("SRD")
+  monsterActions  MonsterAction[]
 
   @@unique([name, source])
   @@index([name])
   @@index([challengeRating])
   @@index([type])
+}
+
+model MonsterAction {
+  id          String  @id @default(cuid())
+  monsterId   String
+  monster     Monster @relation(fields: [monsterId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  attackBonus Int?
+  damageDice  String?
+  damageType  String?
+  actionType  String  @default("action")
+  source      String  @default("SRD")
+
+  @@unique([monsterId, name, actionType])
+  @@index([monsterId])
+  @@index([name])
+}
+
+model Item {
+  id          String  @id @default(cuid())
+  name        String
+  type        String
+  category    String  @default("")
+  rarity      String?
+  weight      Float?
+  cost        String?
+  damage      String?
+  damageType  String?
+  armorClass  Int?
+  properties  Json?
+  description String  @default("")
+  source      String  @default("SRD")
+
+  @@unique([name, source])
+  @@index([name])
+  @@index([type])
+  @@index([category])
+  @@index([rarity])
+}
+
+model Feature {
+  id          String  @id @default(cuid())
+  name        String
+  type        String
+  className   String?
+  level       Int?
+  description String  @default("")
+  source      String  @default("SRD")
+
+  @@unique([name, type, source])
+  @@index([name])
+  @@index([type])
+  @@index([className])
+  @@index([level])
 }
 
 model Character {
@@ -130,4 +207,39 @@ model Rule {
   @@unique([title, source])
   @@index([title])
   @@index([category])
+}
+
+model Document {
+  id           String          @id @default(cuid())
+  title        String
+  source       String          @default("Custom")
+  license      String?
+  uploadedById String
+  uploadedBy   User            @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  pageCount    Int?
+  chunkCount   Int             @default(0)
+  status       DocumentStatus  @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  chunks       DocumentChunk[]
+
+  @@index([uploadedById])
+  @@index([source])
+  @@index([status])
+}
+
+model DocumentChunk {
+  id         String                       @id @default(cuid())
+  documentId String
+  document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  ordinal    Int
+  text       String
+  pageNumber Int?
+  tokenCount Int?
+  embedding  Unsupported("vector(1536)")?
+  createdAt  DateTime                     @default(now())
+
+  @@unique([documentId, ordinal])
+  @@index([documentId])
 }

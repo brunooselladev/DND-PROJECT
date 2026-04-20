@@ -18,7 +18,7 @@ export default async function RuleDetailPage({ params }: PageProps) {
   return (
     <section className="mx-auto max-w-3xl space-y-5">
       <Link href="/rules" className="text-sm text-[color:var(--accent-strong)] hover:underline">
-        {"<- "}Back to rules
+        ← Back to rules
       </Link>
 
       <article className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6">

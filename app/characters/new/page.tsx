@@ -14,7 +14,7 @@ export default async function NewCharacterPage() {
   return (
     <section className="mx-auto max-w-3xl space-y-5">
       <Link href="/characters" className="text-sm text-[color:var(--accent-strong)] hover:underline">
-        {"<- "}Back to characters
+        ← Back to characters
       </Link>
 
       <header>

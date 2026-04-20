@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:/Users/bruno/Documents/Projects/DND PROJECT\" diff --stat HEAD)",
+      "Bash(git -C \"c:/Users/bruno/Documents/Projects/DND PROJECT\" diff HEAD -- lib/prisma.ts app/characters/actions.ts lib/characters.ts)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")"
+    ]
+  }
+}

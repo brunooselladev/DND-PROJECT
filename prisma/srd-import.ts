@@ -93,10 +93,73 @@ type RuleApiDetail = {
   subsections?: ApiReference[];
 };
 
+type EquipmentCostApi = {
+  quantity: number;
+  unit: string;
+};
+
+type EquipmentDamageApi = {
+  damage_dice: string;
+  damage_type: ApiReference;
+};
+
+type EquipmentArmorClassApi = {
+  base: number;
+  dex_bonus: boolean;
+  max_bonus?: number;
+};
+
+type EquipmentApiDetail = {
+  index: string;
+  name: string;
+  equipment_category: ApiReference;
+  weapon_category?: string;
+  weapon_range?: string;
+  armor_category?: string;
+  gear_category?: ApiReference;
+  tool_category?: string;
+  vehicle_category?: string;
+  cost?: EquipmentCostApi;
+  weight?: number;
+  damage?: EquipmentDamageApi;
+  two_handed_damage?: EquipmentDamageApi;
+  armor_class?: EquipmentArmorClassApi;
+  str_minimum?: number;
+  stealth_disadvantage?: boolean;
+  properties?: ApiReference[];
+  desc?: string[];
+  special?: string[];
+  contents?: unknown[];
+  quantity?: number;
+};
+
+type MagicItemApiDetail = {
+  index: string;
+  name: string;
+  desc: string[];
+  rarity: { name: string };
+  equipment_category: ApiReference;
+  variant?: boolean;
+  variants?: ApiReference[];
+};
+
+type FeatureApiDetail = {
+  index: string;
+  name: string;
+  level: number;
+  class: ApiReference;
+  subclass?: ApiReference;
+  desc: string[];
+  prerequisites?: unknown[];
+};
+
 type ImportCounts = {
   spells: number;
   monsters: number;
+  monsterActions: number;
   rules: number;
+  items: number;
+  features: number;
 };
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -257,6 +320,30 @@ function normalizeRuleContent(content: string): string {
   return content.replace(/^#+\s+/gm, "").trim();
 }
 
+function formatCost(cost?: EquipmentCostApi): string | null {
+  if (!cost) return null;
+  return `${cost.quantity} ${cost.unit}`;
+}
+
+function resolveEquipmentType(equip: EquipmentApiDetail): string {
+  if (equip.weapon_category) return "Weapon";
+  if (equip.armor_category) return "Armor";
+  if (equip.gear_category) return equip.gear_category.name;
+  if (equip.tool_category) return "Tool";
+  if (equip.vehicle_category) return "Vehicle";
+  return equip.equipment_category.name;
+}
+
+function resolveEquipmentCategory(equip: EquipmentApiDetail): string {
+  if (equip.weapon_category) return equip.weapon_category;
+  if (equip.armor_category) return equip.armor_category;
+  if (equip.tool_category) return equip.tool_category;
+  if (equip.vehicle_category) return equip.vehicle_category;
+  return equip.equipment_category.name;
+}
+
+// ── Fetch records ──
+
 async function fetchSpellRecords(): Promise<Prisma.SpellCreateInput[]> {
   const spellIndex = await fetchJson<ApiListResponse<ApiReference>>("/spells");
   const spells = await fetchDetailsInBatches<SpellApiDetail>(spellIndex.results, "spell details");
@@ -274,20 +361,97 @@ async function fetchSpellRecords(): Promise<Prisma.SpellCreateInput[]> {
   }));
 }
 
-async function fetchMonsterRecords(): Promise<Prisma.MonsterCreateInput[]> {
+type MonsterRecord = {
+  monster: Prisma.MonsterCreateInput;
+  actions: Array<{
+    name: string;
+    description: string;
+    attackBonus: number | null;
+    damageDice: string | null;
+    damageType: string | null;
+    actionType: string;
+  }>;
+};
+
+function extractDamageDice(damage: unknown): { dice: string | null; type: string | null } {
+  if (!damage) return { dice: null, type: null };
+  if (Array.isArray(damage) && damage.length > 0) {
+    const first = damage[0] as Record<string, unknown>;
+    return {
+      dice: (first.damage_dice as string) ?? null,
+      type: (first.damage_type as Record<string, string>)?.name ?? null,
+    };
+  }
+  return { dice: null, type: null };
+}
+
+async function fetchMonsterRecords(): Promise<MonsterRecord[]> {
   const monsterIndex = await fetchJson<ApiListResponse<ApiReference>>("/monsters");
   const monsters = await fetchDetailsInBatches<MonsterApiDetail>(monsterIndex.results, "monster details");
 
-  return monsters.map((monster) => ({
-    name: monster.name,
-    challengeRating: formatChallengeRating(monster.challenge_rating),
-    type: formatMonsterType(monster),
-    armorClass: extractArmorClass(monster.armor_class),
-    hitPoints: monster.hit_points,
-    stats: buildMonsterStats(monster),
-    actions: buildMonsterActions(monster),
-    source: SOURCE,
-  }));
+  return monsters.map((monster) => {
+    const allActions: MonsterRecord["actions"] = [];
+
+    for (const action of monster.actions ?? []) {
+      const { dice, type } = extractDamageDice(action.damage);
+      allActions.push({
+        name: action.name,
+        description: action.desc,
+        attackBonus: action.attack_bonus ?? null,
+        damageDice: dice,
+        damageType: type,
+        actionType: "action",
+      });
+    }
+
+    for (const action of monster.reactions ?? []) {
+      allActions.push({
+        name: action.name,
+        description: action.desc,
+        attackBonus: action.attack_bonus ?? null,
+        damageDice: null,
+        damageType: null,
+        actionType: "reaction",
+      });
+    }
+
+    for (const action of monster.legendary_actions ?? []) {
+      const { dice, type } = extractDamageDice(action.damage);
+      allActions.push({
+        name: action.name,
+        description: action.desc,
+        attackBonus: action.attack_bonus ?? null,
+        damageDice: dice,
+        damageType: type,
+        actionType: "legendary",
+      });
+    }
+
+    return {
+      monster: {
+        name: monster.name,
+        size: monster.size,
+        challengeRating: formatChallengeRating(monster.challenge_rating),
+        type: formatMonsterType(monster),
+        alignment: monster.alignment,
+        armorClass: extractArmorClass(monster.armor_class),
+        hitPoints: monster.hit_points,
+        speed: toJson(monster.speed),
+        strength: monster.strength,
+        dexterity: monster.dexterity,
+        constitution: monster.constitution,
+        intelligence: monster.intelligence,
+        wisdom: monster.wisdom,
+        charisma: monster.charisma,
+        senses: toJson(monster.senses ?? {}),
+        languages: monster.languages ?? "",
+        stats: buildMonsterStats(monster),
+        actions: buildMonsterActions(monster),
+        source: SOURCE,
+      },
+      actions: allActions,
+    };
+  });
 }
 
 async function fetchRuleRecords(): Promise<Prisma.RuleCreateInput[]> {
@@ -314,6 +478,72 @@ async function fetchRuleRecords(): Promise<Prisma.RuleCreateInput[]> {
     source: SOURCE,
   }));
 }
+
+async function fetchEquipmentRecords(): Promise<Prisma.ItemCreateInput[]> {
+  const equipIndex = await fetchJson<ApiListResponse<ApiReference>>("/equipment");
+  const equipment = await fetchDetailsInBatches<EquipmentApiDetail>(equipIndex.results, "equipment details");
+
+  const items: Prisma.ItemCreateInput[] = equipment.map((equip) => {
+    const dmg = equip.damage ?? equip.two_handed_damage;
+    const desc: string[] = [];
+    if (equip.desc?.length) desc.push(...equip.desc);
+    if (equip.special?.length) desc.push(...equip.special);
+
+    return {
+      name: equip.name,
+      type: resolveEquipmentType(equip),
+      category: resolveEquipmentCategory(equip),
+      weight: equip.weight ?? null,
+      cost: formatCost(equip.cost),
+      damage: dmg ? (dmg as EquipmentDamageApi).damage_dice : null,
+      damageType: dmg ? (dmg as EquipmentDamageApi).damage_type?.name ?? null : null,
+      armorClass: equip.armor_class?.base ?? null,
+      properties: equip.properties?.length
+        ? toJson(equip.properties.map((p) => p.name))
+        : Prisma.JsonNull,
+      description: desc.join("\n\n").trim(),
+      source: SOURCE,
+    };
+  });
+
+  // Also fetch magic items
+  try {
+    const magicIndex = await fetchJson<ApiListResponse<ApiReference>>("/magic-items");
+    const magicItems = await fetchDetailsInBatches<MagicItemApiDetail>(magicIndex.results, "magic item details");
+
+    for (const mi of magicItems) {
+      if (mi.variant) continue; // skip variant containers
+      items.push({
+        name: mi.name,
+        type: "Magic Item",
+        category: mi.equipment_category?.name ?? "Wondrous Item",
+        rarity: mi.rarity?.name ?? null,
+        description: mi.desc?.join("\n\n").trim() ?? "",
+        source: SOURCE,
+      });
+    }
+  } catch (error) {
+    console.warn("Could not fetch magic items:", error);
+  }
+
+  return items;
+}
+
+async function fetchFeatureRecords(): Promise<Prisma.FeatureCreateInput[]> {
+  const featureIndex = await fetchJson<ApiListResponse<ApiReference>>("/features");
+  const features = await fetchDetailsInBatches<FeatureApiDetail>(featureIndex.results, "feature details");
+
+  return features.map((f) => ({
+    name: f.name,
+    type: f.subclass ? "Subclass" : "Class",
+    className: f.class?.name ?? null,
+    level: f.level,
+    description: f.desc?.join("\n\n").trim() ?? "",
+    source: SOURCE,
+  }));
+}
+
+// ── Upsert records ──
 
 async function upsertSpells(spells: Prisma.SpellCreateInput[]): Promise<number> {
   for (const batch of chunk(spells, UPSERT_BATCH_SIZE)) {
@@ -350,38 +580,81 @@ async function upsertSpells(spells: Prisma.SpellCreateInput[]): Promise<number> 
   return spells.length;
 }
 
-async function upsertMonsters(monsters: Prisma.MonsterCreateInput[]): Promise<number> {
-  for (const batch of chunk(monsters, UPSERT_BATCH_SIZE)) {
-    await Promise.all(
-      batch.map((monster) => {
-        const source = monster.source ?? SOURCE;
+async function upsertMonsters(records: MonsterRecord[]): Promise<{ monsters: number; actions: number }> {
+  let totalActions = 0;
 
-        return prisma.monster.upsert({
+  for (const batch of chunk(records, UPSERT_BATCH_SIZE)) {
+    await Promise.all(
+      batch.map(async (record) => {
+        const source = record.monster.source ?? SOURCE;
+
+        const monster = await prisma.monster.upsert({
           where: {
             name_source: {
-              name: monster.name,
+              name: record.monster.name,
               source,
             },
           },
           update: {
-            challengeRating: monster.challengeRating,
-            type: monster.type,
-            armorClass: monster.armorClass,
-            hitPoints: monster.hitPoints,
-            stats: monster.stats,
-            actions: monster.actions,
+            size: record.monster.size,
+            challengeRating: record.monster.challengeRating,
+            type: record.monster.type,
+            alignment: record.monster.alignment,
+            armorClass: record.monster.armorClass,
+            hitPoints: record.monster.hitPoints,
+            speed: record.monster.speed,
+            strength: record.monster.strength,
+            dexterity: record.monster.dexterity,
+            constitution: record.monster.constitution,
+            intelligence: record.monster.intelligence,
+            wisdom: record.monster.wisdom,
+            charisma: record.monster.charisma,
+            senses: record.monster.senses,
+            languages: record.monster.languages,
+            stats: record.monster.stats,
+            actions: record.monster.actions,
             source,
           },
           create: {
-            ...monster,
+            ...record.monster,
             source,
           },
         });
+
+        // Upsert individual actions
+        for (const action of record.actions) {
+          await prisma.monsterAction.upsert({
+            where: {
+              monsterId_name_actionType: {
+                monsterId: monster.id,
+                name: action.name,
+                actionType: action.actionType,
+              },
+            },
+            update: {
+              description: action.description,
+              attackBonus: action.attackBonus,
+              damageDice: action.damageDice,
+              damageType: action.damageType,
+            },
+            create: {
+              monsterId: monster.id,
+              name: action.name,
+              description: action.description,
+              attackBonus: action.attackBonus,
+              damageDice: action.damageDice,
+              damageType: action.damageType,
+              actionType: action.actionType,
+              source: SOURCE,
+            },
+          });
+          totalActions += 1;
+        }
       }),
     );
   }
 
-  return monsters.length;
+  return { monsters: records.length, actions: totalActions };
 }
 
 async function upsertRules(rules: Prisma.RuleCreateInput[]): Promise<number> {
@@ -414,30 +687,112 @@ async function upsertRules(rules: Prisma.RuleCreateInput[]): Promise<number> {
   return rules.length;
 }
 
+async function upsertItems(items: Prisma.ItemCreateInput[]): Promise<number> {
+  for (const batch of chunk(items, UPSERT_BATCH_SIZE)) {
+    await Promise.all(
+      batch.map((item) => {
+        const source = item.source ?? SOURCE;
+
+        return prisma.item.upsert({
+          where: {
+            name_source: {
+              name: item.name,
+              source,
+            },
+          },
+          update: {
+            type: item.type,
+            category: item.category,
+            rarity: item.rarity,
+            weight: item.weight,
+            cost: item.cost,
+            damage: item.damage,
+            damageType: item.damageType,
+            armorClass: item.armorClass,
+            properties: item.properties,
+            description: item.description,
+            source,
+          },
+          create: {
+            ...item,
+            source,
+          },
+        });
+      }),
+    );
+  }
+
+  return items.length;
+}
+
+async function upsertFeatures(features: Prisma.FeatureCreateInput[]): Promise<number> {
+  for (const batch of chunk(features, UPSERT_BATCH_SIZE)) {
+    await Promise.all(
+      batch.map((feature) => {
+        const source = feature.source ?? SOURCE;
+
+        return prisma.feature.upsert({
+          where: {
+            name_type_source: {
+              name: feature.name,
+              type: feature.type,
+              source,
+            },
+          },
+          update: {
+            className: feature.className,
+            level: feature.level,
+            description: feature.description,
+            source,
+          },
+          create: {
+            ...feature,
+            source,
+          },
+        });
+      }),
+    );
+  }
+
+  return features.length;
+}
+
+// ── Main ──
+
 export async function importSrdData(): Promise<ImportCounts> {
   console.log("Fetching SRD data from dnd5eapi...");
 
-  const [spells, monsters, rules] = await Promise.all([
+  const [spells, monsterRecords, rules, items, features] = await Promise.all([
     fetchSpellRecords(),
     fetchMonsterRecords(),
     fetchRuleRecords(),
+    fetchEquipmentRecords(),
+    fetchFeatureRecords(),
   ]);
 
   console.log("Writing SRD data to PostgreSQL...");
 
-  const [spellCount, monsterCount, ruleCount] = await Promise.all([
+  const [spellCount, monsterResult, ruleCount, itemCount, featureCount] = await Promise.all([
     upsertSpells(spells),
-    upsertMonsters(monsters),
+    upsertMonsters(monsterRecords),
     upsertRules(rules),
+    upsertItems(items),
+    upsertFeatures(features),
   ]);
 
-  const counts = {
+  const counts: ImportCounts = {
     spells: spellCount,
-    monsters: monsterCount,
+    monsters: monsterResult.monsters,
+    monsterActions: monsterResult.actions,
     rules: ruleCount,
+    items: itemCount,
+    features: featureCount,
   };
 
-  console.log(`Imported ${counts.spells} spells, ${counts.monsters} monsters, and ${counts.rules} rules.`);
+  console.log(
+    `Imported ${counts.spells} spells, ${counts.monsters} monsters (${counts.monsterActions} actions), ` +
+    `${counts.rules} rules, ${counts.items} items, and ${counts.features} features.`
+  );
 
   return counts;
 }

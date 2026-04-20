@@ -23,8 +23,10 @@ export type MonsterListItem = Prisma.MonsterGetPayload<{
   select: {
     id: true;
     name: true;
+    size: true;
     challengeRating: true;
     type: true;
+    alignment: true;
     armorClass: true;
     hitPoints: true;
     source: true;
@@ -37,6 +39,35 @@ export type RuleListItem = Prisma.RuleGetPayload<{
     title: true;
     category: true;
     content: true;
+    source: true;
+  };
+}>;
+
+export type ItemListItem = Prisma.ItemGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    type: true;
+    category: true;
+    rarity: true;
+    cost: true;
+    weight: true;
+    damage: true;
+    damageType: true;
+    armorClass: true;
+    description: true;
+    source: true;
+  };
+}>;
+
+export type FeatureListItem = Prisma.FeatureGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    type: true;
+    className: true;
+    level: true;
+    description: true;
     source: true;
   };
 }>;
@@ -107,6 +138,7 @@ export async function listSpells(options: {
 export async function listMonsters(options: {
   query?: string;
   challengeRating?: string;
+  type?: string;
   take?: number;
 }): Promise<MonsterListItem[]> {
   const filters: Prisma.MonsterWhereInput[] = [];
@@ -115,11 +147,15 @@ export async function listMonsters(options: {
     filters.push({ challengeRating: options.challengeRating });
   }
 
+  if (options.type) {
+    filters.push({ type: { contains: options.type, mode: "insensitive" } });
+  }
+
   if (options.query) {
     filters.push({
       OR: [
         { name: { contains: options.query, mode: "insensitive" } },
-        { challengeRating: { contains: options.query, mode: "insensitive" } },
+        { type: { contains: options.query, mode: "insensitive" } },
       ],
     });
   }
@@ -128,8 +164,10 @@ export async function listMonsters(options: {
     select: {
       id: true,
       name: true,
+      size: true,
       challengeRating: true,
       type: true,
+      alignment: true,
       armorClass: true,
       hitPoints: true,
       source: true,
@@ -184,6 +222,96 @@ export async function listRules(options: {
   return rows;
 }
 
+export async function listItems(options: {
+  query?: string;
+  type?: string;
+  rarity?: string;
+  take?: number;
+}): Promise<ItemListItem[]> {
+  const filters: Prisma.ItemWhereInput[] = [];
+
+  if (options.type) {
+    filters.push({ type: { contains: options.type, mode: "insensitive" } });
+  }
+
+  if (options.rarity) {
+    filters.push({ rarity: { contains: options.rarity, mode: "insensitive" } });
+  }
+
+  if (options.query) {
+    filters.push({
+      OR: [
+        { name: { contains: options.query, mode: "insensitive" } },
+        { description: { contains: options.query, mode: "insensitive" } },
+        { type: { contains: options.query, mode: "insensitive" } },
+        { category: { contains: options.query, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  return prisma.item.findMany({
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      category: true,
+      rarity: true,
+      cost: true,
+      weight: true,
+      damage: true,
+      damageType: true,
+      armorClass: true,
+      description: true,
+      source: true,
+    },
+    where: filters.length > 0 ? { AND: filters } : undefined,
+    orderBy: [{ type: "asc" }, { name: "asc" }],
+    take: getTake(options.take),
+  });
+}
+
+export async function listFeatures(options: {
+  query?: string;
+  type?: string;
+  className?: string;
+  take?: number;
+}): Promise<FeatureListItem[]> {
+  const filters: Prisma.FeatureWhereInput[] = [];
+
+  if (options.type) {
+    filters.push({ type: { contains: options.type, mode: "insensitive" } });
+  }
+
+  if (options.className) {
+    filters.push({ className: { contains: options.className, mode: "insensitive" } });
+  }
+
+  if (options.query) {
+    filters.push({
+      OR: [
+        { name: { contains: options.query, mode: "insensitive" } },
+        { description: { contains: options.query, mode: "insensitive" } },
+        { className: { contains: options.query, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  return prisma.feature.findMany({
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      className: true,
+      level: true,
+      description: true,
+      source: true,
+    },
+    where: filters.length > 0 ? { AND: filters } : undefined,
+    orderBy: [{ className: "asc" }, { level: "asc" }, { name: "asc" }],
+    take: getTake(options.take),
+  });
+}
+
 export async function findSpellById(id: string) {
   return prisma.spell.findUnique({
     where: { id },
@@ -193,6 +321,11 @@ export async function findSpellById(id: string) {
 export async function findMonsterById(id: string) {
   return prisma.monster.findUnique({
     where: { id },
+    include: {
+      monsterActions: {
+        orderBy: [{ actionType: "asc" }, { name: "asc" }],
+      },
+    },
   });
 }
 
@@ -200,4 +333,28 @@ export async function findRuleById(id: string) {
   return prisma.rule.findUnique({
     where: { id },
   });
+}
+
+export async function findItemById(id: string) {
+  return prisma.item.findUnique({
+    where: { id },
+  });
+}
+
+export async function findFeatureById(id: string) {
+  return prisma.feature.findUnique({
+    where: { id },
+  });
+}
+
+export async function getCompendiumCounts() {
+  const [spells, monsters, rules, items, features] = await Promise.all([
+    prisma.spell.count(),
+    prisma.monster.count(),
+    prisma.rule.count(),
+    prisma.item.count(),
+    prisma.feature.count(),
+  ]);
+
+  return { spells, monsters, rules, items, features };
 }
