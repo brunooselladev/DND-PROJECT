@@ -18,8 +18,6 @@ export type SrdImportState = {
   message?: string;
 };
 
-export const INITIAL_SRD_IMPORT_STATE: SrdImportState = { status: "idle" };
-
 export async function runSrdImportAction(): Promise<SrdImportState> {
   await requireAdmin();
 

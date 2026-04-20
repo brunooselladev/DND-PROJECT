@@ -362,9 +362,9 @@ export function CharacterSheetForm({
         </p>
       ) : null}
 
-      <section className="grid gap-4 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5 md:grid-cols-2">
+      <section className="grid gap-4 panel-ornate md:grid-cols-2">
         <div className="md:col-span-2">
-          <h2 className="text-lg font-semibold text-[color:var(--foreground)]">Basics</h2>
+          <h2 className="panel-ornate-header">Basics</h2>
         </div>
 
         <label className="grid gap-2 text-sm">
@@ -428,8 +428,8 @@ export function CharacterSheetForm({
 
       <section className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
         <div className="space-y-5">
-          <article className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">Stats</h2>
+          <article className="panel-ornate">
+            <h2 className="panel-ornate-header">Stats</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {[
                 ["strength", "Strength"],
@@ -461,10 +461,10 @@ export function CharacterSheetForm({
             </div>
           </article>
 
-          <article className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
+          <article className="panel-ornate">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-[color:var(--foreground)]">Spells</h2>
+                <h2 className="panel-ornate-header !mb-0 !border-none">Spells</h2>
                 <p className="mt-1 text-sm text-[color:var(--muted-foreground)]">
                   Prepared {formValues.preparedSpellIds.length} of {spells.length} available spells.
                 </p>
@@ -478,7 +478,7 @@ export function CharacterSheetForm({
               />
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {SPELL_SLOT_LEVELS.map((level) => {
                 const key = `level${level}` as SpellSlotLevelKey;
                 const band = formValues.spellSlots[key] ?? { max: 0, used: 0 };
@@ -490,7 +490,7 @@ export function CharacterSheetForm({
                 return (
                   <div
                     key={key}
-                    className="group rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-soft)] p-3 text-sm shadow-sm"
+                    className="card p-4 text-sm flex flex-col justify-between"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
@@ -544,10 +544,10 @@ export function CharacterSheetForm({
                       )}
                     </div>
 
-                    <div className="mt-3 grid gap-2">
-                      <div className="flex items-end justify-between gap-2">
-                        <label className="grid gap-1">
-                          <span className="text-[11px] font-medium text-[color:var(--muted-foreground)]">
+                    <div className="mt-4 grid gap-2">
+                      <div className="flex items-center justify-between gap-2 border-t border-[color:var(--border)] pt-3">
+                        <label className="flex items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-foreground)]">
                             Max
                           </span>
                           <input
@@ -579,23 +579,23 @@ export function CharacterSheetForm({
                                   );
                               });
                             }}
-                            className="h-9 w-20 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm disabled:opacity-80"
+                            className="input h-8 w-16 text-center disabled:opacity-80"
                           />
                         </label>
-                        <div className="text-[11px] text-[color:var(--muted-foreground)]">
-                          Tap Use to spend a slot.
+                        <div className="text-[10px] text-[color:var(--muted-foreground)] uppercase tracking-wider text-right">
+                          {canEdit ? "Tap Use to cast" : ""}
                         </div>
                       </div>
 
                       <input type="hidden" name={`${key}Used`} value={band.used} />
 
                       {canEdit ? (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="flex gap-2 mt-1">
                           <button
                             type="button"
                             onClick={() => spendSpellSlot(level)}
                             disabled={band.used >= band.max}
-                            className="h-10 rounded-md bg-[color:var(--accent-strong)] px-3 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+                            className="btn-primary flex-1 h-9 shadow-none text-xs"
                           >
                             Use
                           </button>
@@ -603,7 +603,7 @@ export function CharacterSheetForm({
                             type="button"
                             onClick={() => restoreSpellSlot(level)}
                             disabled={band.used <= 0}
-                            className="h-10 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+                            className="btn-ghost flex-1 h-9 text-xs"
                           >
                             Restore
                           </button>
@@ -615,7 +615,7 @@ export function CharacterSheetForm({
                           type="button"
                           onClick={() => setSpellSlotUsed(level, 0)}
                           disabled={band.used === 0}
-                          className="h-9 rounded-md border border-[color:var(--border)] bg-transparent px-3 py-2 text-[11px] font-medium text-[color:var(--muted-foreground)] transition hover:bg-[color:var(--surface)] disabled:cursor-not-allowed disabled:opacity-60"
+                          className="h-8 rounded-sm border border-[color:var(--border)] bg-transparent px-3 py-1 text-[10px] uppercase tracking-wide font-medium text-[color:var(--muted-foreground)] transition hover:bg-[color:var(--surface)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Reset used
                         </button>
@@ -659,9 +659,9 @@ export function CharacterSheetForm({
         </div>
 
         <div className="space-y-5">
-          <article className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
-            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">Combat</h2>
-            <div className="mt-4 h-3 overflow-hidden rounded-full bg-[color:var(--surface-soft)]">
+          <article className="panel-ornate">
+            <h2 className="panel-ornate-header">Combat</h2>
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-[color:var(--surface-strong)]">
               <div
                 className="h-full rounded-full bg-[color:var(--accent-strong)] transition-all"
                 style={{ width: `${hpPercent}%` }}

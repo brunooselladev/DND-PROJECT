@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased">
         <AppShell>{children}</AppShell>
       </body>
     </html>
