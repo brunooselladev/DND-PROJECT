@@ -133,7 +133,7 @@ async function fetchEquipment() {
       name: e.name, type, category: cat, weight: e.weight ?? null, cost: e.cost ? `${e.cost.quantity} ${e.cost.unit}` : null,
       damage: dmg?.damage_dice ?? null, damageType: dmg?.damage_type?.name ?? null, armorClass: e.armor_class?.base ?? null,
       properties: e.properties?.length ? toJson(e.properties.map(p => p.name)) : Prisma.JsonNull,
-      description: desc, source: SOURCE, rarity: null,
+      description: desc, source: SOURCE, rarity: null as string | null,
     };
   });
   try {

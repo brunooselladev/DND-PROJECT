@@ -42,6 +42,7 @@ export type CharacterDetail = Prisma.CharacterGetPayload<{
     level: true;
     race: true;
     background: true;
+    avatarUrl: true;
     strength: true;
     dexterity: true;
     constitution: true;
@@ -111,6 +112,7 @@ export type CharacterUpdateInput = {
   level: number;
   race: string;
   background: string;
+  avatarUrl: string | null;
   strength: number;
   dexterity: number;
   constitution: number;
@@ -168,6 +170,7 @@ const CHARACTER_DETAIL_SELECT = {
   level: true,
   race: true,
   background: true,
+  avatarUrl: true,
   strength: true,
   dexterity: true,
   constitution: true,
@@ -387,6 +390,7 @@ export async function updateCharacterForUser(userId: string, characterId: string
         level: nextLevel,
         race: input.race.trim(),
         background: input.background.trim(),
+        avatarUrl: input.avatarUrl,
         strength: clamp(input.strength, 1, 30),
         dexterity: clamp(input.dexterity, 1, 30),
         constitution: clamp(input.constitution, 1, 30),

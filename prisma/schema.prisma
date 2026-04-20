@@ -145,6 +145,7 @@ model Character {
   level         Int
   race          String
   background    String
+  avatarUrl     String?
   strength      Int
   dexterity     Int
   constitution  Int

@@ -18,11 +18,15 @@ export function DocumentDetailActions({ documentId, canReindex }: Props) {
   function handleReindex() {
     setError(null);
     startTransition(async () => {
-      const result = await reindexDocumentAction(documentId);
-      if (result.ok) {
-        router.refresh();
-      } else {
-        setError(result.message);
+      try {
+        const result = await reindexDocumentAction(documentId);
+        if (result.status !== "FAILED") {
+          router.refresh();
+        } else {
+          setError(result.errorMessage || "Reindex failed");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Reindex failed");
       }
     });
   }
@@ -34,12 +38,12 @@ export function DocumentDetailActions({ documentId, canReindex }: Props) {
 
     setError(null);
     startTransition(async () => {
-      const result = await deleteDocumentAction(documentId);
-      if (result.ok) {
+      try {
+        await deleteDocumentAction(documentId);
         router.push("/admin/documents");
         router.refresh();
-      } else {
-        setError(result.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Delete failed");
       }
     });
   }

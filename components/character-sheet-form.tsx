@@ -50,18 +50,21 @@ type CharacterSheetValue = {
   conditionsText: string;
   inventoryText: string;
   notes: string;
+  avatarUrl: string | null;
 };
 
 type CharacterSheetFormProps = {
   initialCharacter: CharacterSheetValue;
   spells: SpellOption[];
   canEdit: boolean;
+  ownerName: string;
 };
 
 export function CharacterSheetForm({
   initialCharacter,
   spells,
   canEdit,
+  ownerName,
 }: CharacterSheetFormProps) {
   const [state, formAction, isPending] = useActionState(
     updateCharacterAction,
@@ -73,6 +76,21 @@ export function CharacterSheetForm({
   const [shortRestSpend, setShortRestSpend] = useState(1);
   const [spellSearch, setSpellSearch] = useState("");
   const deferredSpellSearch = useDeferredValue(spellSearch);
+  const [isImageSelectorOpen, setIsImageSelectorOpen] = useState(false);
+
+  const defaultAvatar = formValues.class.toLowerCase().includes("rogue") || formValues.class.toLowerCase().includes("pícar")
+    ? "/hero_rogue.png"
+    : formValues.class.toLowerCase().includes("fighter") || formValues.class.toLowerCase().includes("guerr") || formValues.class.toLowerCase().includes("palad")
+    ? "/hero_fighter.png"
+    : "/hero_wizard.png";
+    
+  const displayAvatar = formValues.avatarUrl || defaultAvatar;
+
+  const AVAILABLE_AVATARS = [
+    { url: "/hero_wizard.png", label: "Wizard / Mage" },
+    { url: "/hero_rogue.png", label: "Rogue / Thief" },
+    { url: "/hero_fighter.png", label: "Fighter / Warrior" },
+  ];
 
   const hpPercent =
     formValues.maxHp > 0
@@ -338,17 +356,73 @@ export function CharacterSheetForm({
   }
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-6">
       <input type="hidden" name="characterId" value={formValues.id} />
+      <input type="hidden" name="avatarUrl" value={formValues.avatarUrl || ""} />
       {formValues.preparedSpellIds.map((spellId) => (
         <input key={spellId} type="hidden" name="preparedSpellIds" value={spellId} />
       ))}
 
       {!canEdit ? (
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-sm text-[color:var(--muted-foreground)]">
+        <div className="rounded-sm border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-sm text-[color:var(--muted-foreground)]">
           This sheet is view-only because only the character owner can edit it.
         </div>
       ) : null}
+
+      <header className="relative overflow-hidden rounded-md border-2 border-[color:var(--border)] bg-[color:var(--background)] shadow-md">
+        <div className="absolute inset-0 bg-gradient-to-r from-[color:var(--background)] via-[color:var(--background)] to-transparent z-10 md:w-2/3" />
+        <div className="absolute inset-0 z-0 flex justify-end">
+          <img src={displayAvatar} alt="Character art" className="h-full w-full object-cover md:w-1/2 object-top opacity-60 transition-all duration-500" />
+        </div>
+        
+        <div className="relative z-20 p-6 md:p-8 flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div>
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-[color:var(--foreground)] drop-shadow-sm">{formValues.name}</h1>
+            <p className="mt-2 text-lg font-display text-[color:var(--muted-foreground)]">
+              Level {formValues.level} {formValues.class}
+              {formValues.race ? ` · ${formValues.race}` : ""}
+            </p>
+            <p className="mt-2 text-xs uppercase tracking-[0.15em] font-semibold text-[color:var(--accent-strong)]">
+              Owner: {ownerName}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-end gap-3 relative">
+            <span className="rounded-sm border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-1 text-xs uppercase font-bold text-[color:var(--muted-foreground)] shadow-sm">
+              {canEdit ? "Editable" : "View only"}
+            </span>
+            {canEdit ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsImageSelectorOpen(!isImageSelectorOpen)}
+                  className="btn-ghost bg-[color:var(--background)] bg-opacity-80 backdrop-blur-sm text-xs px-2 py-1"
+                >
+                  Change Portrait
+                </button>
+                {isImageSelectorOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] shadow-xl z-50 p-2 grid gap-1">
+                    {AVAILABLE_AVATARS.map((avatar) => (
+                      <button
+                        key={avatar.url}
+                        type="button"
+                        onClick={() => {
+                          setFormValues(curr => ({ ...curr, avatarUrl: avatar.url }));
+                          setIsImageSelectorOpen(false);
+                        }}
+                        className={`flex items-center gap-2 p-2 rounded hover:bg-[color:var(--surface-soft)] transition-colors text-left text-xs ${displayAvatar === avatar.url ? 'bg-[color:var(--accent-soft)] text-[color:var(--accent-glow)]' : 'text-[color:var(--muted-foreground)]'}`}
+                      >
+                        <img src={avatar.url} alt="" className="w-8 h-8 rounded object-cover border border-[color:var(--border)]" />
+                        {avatar.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
 
       {state.message ? (
         <p

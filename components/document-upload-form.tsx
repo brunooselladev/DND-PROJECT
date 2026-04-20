@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { createDocumentAction } from "@/app/admin/documents/actions";
+import { uploadDocumentAction } from "@/app/admin/documents/actions";
 
 export function DocumentUploadForm() {
   const [isPending, startTransition] = useTransition();
@@ -17,13 +17,13 @@ export function DocumentUploadForm() {
 
     setError(null);
     startTransition(async () => {
-      const result = await createDocumentAction(formData);
+      const result = await uploadDocumentAction({ status: "idle" }, formData);
 
-      if (result.ok) {
+      if (result.status === "success") {
         formRef.current?.reset();
         router.refresh();
       } else {
-        setError(result.message);
+        setError(result.message || "An error occurred");
       }
     });
   }

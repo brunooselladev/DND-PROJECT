@@ -122,6 +122,7 @@ export async function updateCharacterAction(
       level: parseInteger(formData, "level", 1),
       race: parseText(formData, "race"),
       background: parseText(formData, "background"),
+      avatarUrl: parseText(formData, "avatarUrl") || null,
       strength: parseInteger(formData, "strength", 10),
       dexterity: parseInteger(formData, "dexterity", 10),
       constitution: parseInteger(formData, "constitution", 10),
